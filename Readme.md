@@ -5,9 +5,9 @@ as defined in the [RFC4422](https://datatracker.ietf.org/doc/html/rfc4422)
 
 ## Usage
 
-`Sasl::Login` class implements the draft murchison SASL LOGIN mechanism.
-`Sasl::Plain` class implements the PLAIN SASL mechanism.
-`Sasl::Scram` class implements the Salted Challenge Response Authentication Mechanism.
+`Sasl::Login` class implements the draft murchison SASL LOGIN mechanism.<br/>
+`Sasl::Plain` class implements the PLAIN SASL mechanism.<br/>
+`Sasl::Scram` class implements the Salted Challenge Response Authentication Mechanism.<br/>
 
 ## Building the C++ Implementation
 
