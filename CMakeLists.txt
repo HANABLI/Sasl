@@ -7,6 +7,7 @@ set(This Sasl)
 
 
 set(Headers
+    include/Sasl/Mechanism.hpp
     include/Sasl/Login.hpp
     include/Sasl/Plain.hpp
     include/Sasl/Scram.hpp
