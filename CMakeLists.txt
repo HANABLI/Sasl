@@ -24,7 +24,7 @@ set_target_properties(${This} PROPERTIES
     FOLDER Libraries
 )
 target_include_directories(${This} PUBLIC include)
-target_link_libraries(
+target_link_libraries(${This} PUBLIC
     SystemUtils
 )
 
