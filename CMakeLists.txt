@@ -26,6 +26,10 @@ set_target_properties(${This} PROPERTIES
 target_include_directories(${This} PUBLIC include)
 target_link_libraries(${This} PUBLIC
     SystemUtils
+    Sha1
+    Hmac
+    Pbkdf2
+    Base64
 )
 
 add_subdirectory(test)
