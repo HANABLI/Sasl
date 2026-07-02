@@ -17,6 +17,11 @@ namespace Sasl::Client
             size_t level = 0) = 0;
 
         /**
+         *  Reset credential exchange process.
+         */
+        virtual void Reset() = 0;
+
+        /**
          * This returns the initial response that the clinet have to send to
          * the server on an authentication request.
          *
@@ -59,6 +64,15 @@ namespace Sasl::Client
          *         An empty message is rturned if the exchange is completed.
          */
         virtual std::string ExchangeAuthentication(const std::string& message) = 0;
+
+        /**
+         * This method return an indication of whether or not the mechanism
+         * has detect the a succesfull authentication.
+         *
+         * @return An indication of whether or not authentication was succeeded.
+         *
+         */
+        virtual bool Succeeded() = 0;
     };
 
 }  // namespace Sasl::Client
