@@ -16,6 +16,10 @@ namespace Sasl::Client
     class Scram : public Mechanism
     {
     public:
+        // Types
+        typedef std::function<std::vector<uint8_t>(const std::vector<uint8_t>& data)> HashFunction;
+
+    public:
         // Rule of 5
         ~Scram() noexcept;
         Scram(const Scram&) = delete;
@@ -46,6 +50,18 @@ namespace Sasl::Client
         std::string ExchangeAuthentication(const std::string& message) override;
 
     public:
+        /**
+         * This is used to setup the hash function needed to compute the scram algorithm.
+         *
+         * @param[in] fn
+         *      This is the Hash function to use in the scram algorithm.
+         * @param[in] blockSize
+         *      This is the block size of the given hash function in byte.
+         * @param[in] digestSize
+         *      This is the  bit size of the digest produced by the hash function.
+         */
+        void SetHashFunction(HashFunction fn, size_t blockSize, size_t digestSize) const;
+
         /**
          * This function is used to create the client's proof for the SCRAM
          * algorithm given the required input.
