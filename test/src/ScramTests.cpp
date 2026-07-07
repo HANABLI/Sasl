@@ -151,4 +151,19 @@ TEST(SaslTests, SaslTests_Scram_CredentialInitialResponseWithoutAuthorizationIde
     const auto clientNonce = clientFirstMessage.substr(11);
     EXPECT_EQ("n,,n=bob,r=", clientFirstMessage.substr(0, 11));
     EXPECT_FALSE(clientNonce.empty());
+}}
+
+TEST(SaslTests, SaslTests_Scram_CredentialInitialResponseWithAuthorizationIdentity__Test) {
+    Sasl::Client::Scram mechanism;
+    mechanism.SetHashFunction(
+
+        static_cast<std::vector<uint8_t> (*)(const std::vector<uint8_t>&)>(Sha1::Sha1Bytes),
+        Sha1::SHA1_BLOCK_SIZE, 160);
+    mechanism.SetCredentials("hunter2", "bob", "me");
+    const auto clientFirstMessage = mechanism.InitialResponse();
+    ASSERT_GE(clientFirstMessage.length(), 13);
+    const auto clientNonce = clientFirstMessage.substr(13);
+    EXPECT_EQ("n,me,n=bob,r=", clientFirstMessage.substr(0, 13));
+    EXPECT_FALSE(clientNonce.empty());
 }
+
