@@ -167,3 +167,17 @@ TEST(SaslTests, SaslTests_Scram_CredentialInitialResponseWithAuthorizationIdenti
     EXPECT_FALSE(clientNonce.empty());
 }
 
+TEST(SaslTests, SaslTests_Scram_CredentialsAfterEmptyServerMessage__Test) {
+    Sasl::Client::Scram mechanism;
+    mechanism.SetHashFunction(
+        static_cast<std::vector<uint8_t> (*)(const std::vector<uint8_t>&)>(Sha1::Sha1Bytes),
+        Sha1::SHA1_BLOCK_SIZE, 160);
+    mechanism.SetCredentials("hanter2", "toto");
+    (void)mechanism.ExchangeAuthentication("");
+    const auto clientFirstMessage = mechanism.InitialResponse();
+    ASSERT_GE(clientFirstMessage.length(), 12);
+    const auto clientNonce = clientFirstMessage.substr(12);
+    EXPECT_EQ("n,,n=toto,r=", clientFirstMessage.substr(0, 12));
+    EXPECT_FALSE(clientNonce.empty());
+}
+
