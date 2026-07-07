@@ -84,7 +84,7 @@ namespace
      */
     ClientProofServerSignature ComputeClientProofServerSignature(
         const std::string& userName, const std::string& password, const std::string& salt,
-        const std::string& clientNonce, const std::string& serverNonce, int iterations,
+        const std::string& clientNonce, const std::string& serverNonce, size_t iterations,
         const std::function<std::vector<uint8_t>(const std::vector<uint8_t>&)> hashFunction,
         size_t blockSize, size_t degestSize) {
         const auto saltedPassword = Pbkdf2::Pbkdf2(
@@ -96,7 +96,7 @@ namespace
         const auto storedKey = hashFunction(clientKey);
         const auto clientFirstMessageBar = "n=" + userName + ",r=" + clientNonce;
         const auto serverFirstMessage = StringUtils::sprintf(
-            ("r=" + serverNonce + ",s=" + salt + ",i=%zu").c_str(), iterations);
+            ("r=%s,s=%s,i=%zu"), serverNonce.c_str(), salt.c_str(), iterations);
         const auto clientFirstMessageWithoutProof = "c=biws,r=" + serverNonce;
         const auto authMessage = StringToBytes(clientFirstMessageBar + "," + serverFirstMessage +
                                                "," + clientFirstMessageWithoutProof);
@@ -151,7 +151,7 @@ TEST(SaslTests, SaslTests_Scram_CredentialInitialResponseWithoutAuthorizationIde
     const auto clientNonce = clientFirstMessage.substr(11);
     EXPECT_EQ("n,,n=bob,r=", clientFirstMessage.substr(0, 11));
     EXPECT_FALSE(clientNonce.empty());
-}}
+}
 
 TEST(SaslTests, SaslTests_Scram_CredentialInitialResponseWithAuthorizationIdentity__Test) {
     Sasl::Client::Scram mechanism;
