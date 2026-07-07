@@ -8,7 +8,9 @@
 #include <Sasl/Scram.hpp>
 #include <Sha1/Sha1.hpp>
 #include <Hmac/Hmac.hpp>
+#include <Pbkdf2/Pbkdf2.hpp>
 #include <SystemUtils/CryptoRandom.hpp>
+#include <StringUtils/StringUtils.hpp>
 
 namespace
 {
@@ -70,6 +72,20 @@ namespace
         { builder << PRINTABLE[byte % PRINTABLE.size()]; }
         return builder.str();
     }
+
+    enum class ExchangeStep
+    {
+        /**
+         * Provides the username and nonce without exchange.
+         */
+        ClientNonce,
+        /**
+         * provide the proof
+         */
+        SendClientProof,
+        CheckServerSignature,
+        Done,
+    };
 }  // namespace
 namespace Sasl::Client
 {
@@ -78,9 +94,19 @@ namespace Sasl::Client
         bool isCredentialWasSent = false;
 
         /**
+         * This is the current exchange step between client and server.
+         */
+        ExchangeStep exchangeStep = ExchangeStep::ClientNonce;
+        /**
          * This flag indicate whether the authentication succeeded or not.
          */
         bool succeeded = false;
+
+        /**
+         * This flag indicate whether or not the mechanism has detected an
+         * incoherent message during the authentication exchange.
+         */
+        bool error = false;
 
         /**
          * This is the client nonce to use in the scram algorithm to
@@ -106,6 +132,13 @@ namespace Sasl::Client
         std::string encodedChannelBinding;
 
         /**
+         * This is the digest that the client computes and expects the server
+         * to provide the same in order to verify the correctness of
+         * the password provided by the client.
+         */
+        std::vector<uint8_t> serverSignature;
+
+        /**
          * This is the hash function to use to compute sasl algorithm.
          */
         HashFunction hashFunction;
@@ -128,8 +161,11 @@ namespace Sasl::Client
          * identity.
          */
         std::string username;
-
+        /**
+         *
+         */
         SystemUtils::DiagnosticsSender diagnosticSender;
+
         Impl() : diagnosticSender("Sasl::Client::Scram") {}
         ~Impl() noexcept = default;
     };
@@ -169,7 +205,96 @@ namespace Sasl::Client
         impl_->encodedChannelBinding = Base64::EncodeToBase64(gs2Header);
     }
 
-    std::string Scram::ExchangeAuthentication(const std::string& message) { return ""; }
+    std::string Scram::ExchangeAuthentication(const std::string& message) {
+        if (impl_->error)
+        { return ""; }
+
+        switch (impl_->exchangeStep)
+        {
+        case ExchangeStep::ClientNonce: {
+            impl_->exchangeStep = ExchangeStep::SendClientProof;
+            return InitialResponse();
+        }
+
+        break;
+        case ExchangeStep::SendClientProof: {
+            const auto parts = StringUtils::Split(message, ",");
+            size_t iterations = 1;
+            std::string serverNonce;
+            std::vector<uint8_t> salt;
+            for (const auto part : parts)
+            {
+                if ((part.length() < 3) || (part[1] != '='))
+                {
+                    impl_->error = true;
+                    return "";
+                }
+                const auto value = part.substr(2);
+                switch (part[0])
+                {
+                case 'r': {
+                    serverNonce = value;
+                    if (serverNonce.substr(0, impl_->clientNonce.length()) != impl_->clientNonce)
+                    {
+                        impl_->error = true;
+                        return "";
+                    }
+                }
+                break;
+                case 's': {
+                    salt = StringToBytes(Base64::DecodeFromBase64(value));
+                }
+
+                break;
+                case 'i':
+                    if (sscanf(value.c_str(), "%zu", &iterations) != 1)
+                    {
+                        impl_->error = true;
+                        return "";
+                    }
+
+                    break;
+                default:
+                    break;
+                }
+            }
+            impl_->exchangeStep = ExchangeStep::CheckServerSignature;
+            const auto saltedPassword =
+                Pbkdf2::Pbkdf2(impl_->hmacFunction, impl_->normalizedPassword, salt, iterations,
+                               impl_->digestSize / 8);
+            const auto clientKey = impl_->hmacFunction(saltedPassword, StringToBytes("Client Key"));
+            const auto storedKey = impl_->hashFunction(clientKey);
+            const auto clientFinalMessageWithoutProof =
+                ("c=" + impl_->encodedChannelBinding + ",r=" + serverNonce);
+            const auto authMessage = StringToBytes(impl_->clientFirstMessageBare + ',' + message +
+                                                   ',' + clientFinalMessageWithoutProof);
+            const auto clientSignature = impl_->hmacFunction(storedKey, authMessage);
+            std::vector<uint8_t> clientProof(storedKey.size());
+            for (size_t i = 0; i < clientProof.size(); ++i)
+            { clientProof[i] = clientKey[i] ^ clientSignature[i]; }
+            const auto serverKey = impl_->hmacFunction(saltedPassword, StringToBytes("Server Key"));
+            impl_->serverSignature = impl_->hmacFunction(serverKey, authMessage);
+            impl_->diagnosticSender.SendDiagnosticInformationString(
+                SystemUtils::DiagnosticsSender::INFO,
+                "C: " + clientFinalMessageWithoutProof + ",p=*********");
+            return (clientFinalMessageWithoutProof + ",p=" +
+                    Base64::EncodeToBase64(std::string(clientProof.begin(), clientProof.end())));
+        }
+
+        break;
+        case ExchangeStep::CheckServerSignature: {
+            impl_->exchangeStep = ExchangeStep::Done;
+            const auto expectedMessage = ("v=" + Base64::EncodeToBase64(impl_->serverSignature));
+            if (message == expectedMessage)
+            { impl_->succeeded = true; }
+            return "";
+        }
+        break;
+        default:
+            return "";
+            break;
+        }
+    }
 
     void Scram::SetHashFunction(HashFunction fn, size_t blockSize, size_t digestSize) const {
         impl_->hashFunction = fn;
