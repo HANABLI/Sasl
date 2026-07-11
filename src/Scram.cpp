@@ -91,8 +91,6 @@ namespace Sasl::Client
 {
     struct Scram::Impl
     {
-        bool isCredentialWasSent = false;
-
         /**
          * This is the current exchange step between client and server.
          */
@@ -301,20 +299,5 @@ namespace Sasl::Client
         impl_->hmacFunction = Hmac::HmacBytesToBytesFunction(fn, blockSize);
         impl_->digestSize = digestSize;
     }
-    /**
-     * This function is used to create the client's proof for the SCRAM
-     * algorithm given the required input.
-     *
-     * @param[in] password
-     *          The password of the client.
-     * @param[in] clientNonce
-     *          This is the nonce to use to hash the client's password.
-     * @param[in] salt
-     *          This is the number of iterations to use in the algorithm.
-     * @param[in] hashFunction
-     *          The function to use to hash SCRAM algorithm.
-     */
-    static std::string ComputeClientProof(
-        std::string& password, std::string& clientNonce, std::string& salt,
-        std::function<std::vector<uint8_t>(const std::string&)> hashFunction) {}
+
 }  // namespace Sasl::Client
