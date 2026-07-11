@@ -225,3 +225,19 @@ TEST(SaslTests, SaslTests_Scram_ExchangeSignatureAndSucceedAuthentication) {
     mechanism.Reset();
     EXPECT_FALSE(mechanism.Succeeded());
 }
+
+TEST(SaslTests, SaslTests_Scram_ExchangeAuthenticationFailed) {
+    Sasl::Client::Scram mechanism;
+    mechanism.SetHashFunction(
+        static_cast<std::vector<uint8_t> (*)(const std::vector<uint8_t>&)>(Sha1::Sha1Bytes),
+        Sha1::SHA1_BLOCK_SIZE, 160);
+    mechanism.SetCredentials("hanter2", "toto");
+    const auto userNameWithClientNonce = mechanism.ExchangeAuthentication("");
+    const auto clientNonce = userNameWithClientNonce.substr(12);
+    const auto serverNonce = clientNonce + "titi";
+    const auto base64Salt = Base64::EncodeToBase64("MySalt");
+    const auto clientFinalMessage = mechanism.ExchangeAuthentication("error");
+    EXPECT_FALSE(mechanism.Succeeded());
+    mechanism.Reset();
+    EXPECT_FALSE(mechanism.Succeeded());
+}
