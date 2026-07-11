@@ -179,9 +179,16 @@ namespace Sasl::Client
         return impl_->diagnosticSender.SubscribeToDiagnostics(messageDelegate, level);
     }
 
-    void Scram::Reset() { impl_->isCredentialWasSent = false; }
+    void Scram::Reset() {
+        impl_->error = false;
+        impl_->succeeded = false;
+    }
 
-    bool Scram::Succeeded() { return false; }
+    bool Scram::Succeeded() {
+        if (impl_->error)
+        { return false; }
+        return impl_->succeeded;
+    }
 
     std::string Scram::InitialResponse() {
         impl_->diagnosticSender.SendDiagnosticInformationString(
